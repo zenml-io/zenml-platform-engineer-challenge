@@ -4,17 +4,19 @@
 
 At ZenML, we help enterprise customers deploy and operate ZenML in their own infrastructure. As a Senior Platform Engineer, you'll be the expert who guides customers through production deployments, debugs issues, and ensures their MLOps platform is resilient and secure.
 
-For this challenge, you will deploy a production-ready ZenML OSS server on AWS, demonstrating the infrastructure and operational skills we need.
+For this challenge, you will deploy a production-ready ZenML OSS server on a major cloud provider (AWS preferred), demonstrating the infrastructure and operational skills we need.
 
 ## The Scenario
 
 **Acme Corp** is a mid-sized company that wants to self-host ZenML for data governance reasons. They have:
 
-- An AWS account with full admin access
+- A cloud account with full admin access (AWS - preferred, GCP, or Azure)
 - A team of Data Scientists who will use ZenML (they are not infrastructure experts)
 - Requirements for: TLS encryption, external database, proper authentication
 
-**Your Job**: Deploy ZenML OSS on AWS and create documentation that their platform team can use to maintain it.
+**Your Job**: Deploy ZenML OSS on your preferred cloud provider and create documentation that their platform team can use to maintain it.
+
+**Cloud Provider**: We **strongly prefer AWS** (EKS, RDS, ALB) as it aligns with most of our customer deployments. However, if you have significantly more experience with **GCP** (GKE, Cloud SQL) or **Azure** (AKS, Azure Database for MySQL), those are acceptable alternatives.
 
 ---
 
@@ -22,21 +24,21 @@ For this challenge, you will deploy a production-ready ZenML OSS server on AWS, 
 
 ### 1. Infrastructure (Terraform)
 
-**Requirement**: Use Terraform to provision the AWS infrastructure for ZenML.
+**Requirement**: Use Terraform to provision the cloud infrastructure for ZenML.
 
 At minimum, your infrastructure should include:
 
 - **Compute**: A containerized deployment of the ZenML server
-  - **Recommended**: EKS with the official ZenML Helm chart
-  - **Alternatives welcome**: ECS, App Runner, or other containerized solutions — if you choose an alternative, document why
+  - **Recommended**: Managed Kubernetes (EKS/GKE/AKS) with the official ZenML Helm chart
+  - **Alternatives welcome**: Other containerized solutions (ECS, Cloud Run, App Runner, Azure Container Apps) — if you choose an alternative, document why
 - **Database**: MySQL for ZenML metadata
-  - **Option A**: RDS MySQL — managed, production-ready
+  - **Option A**: Managed MySQL (RDS, Cloud SQL, Azure Database for MySQL) — production-ready
   - **Option B**: MySQL as a Kubernetes service — demonstrates K8s stateful workload skills
-- **Networking**: VPC with appropriate subnets and security groups
-- **Load Balancing**: ALB or equivalent with TLS termination
+- **Networking**: Virtual network with appropriate subnets and security groups/firewall rules
+- **Load Balancing**: Load balancer with TLS termination
 - **IAM**: Proper roles and policies (least privilege)
 
-**Evaluation note**: We care more about your infrastructure decisions and documentation than which specific compute platform you choose. EKS demonstrates Kubernetes skills, but a well-architected ECS or App Runner solution is equally valid.
+**Evaluation note**: We care more about your infrastructure decisions and documentation than which specific cloud or compute platform you choose.
 
 ### 2. ZenML Server Configuration
 
@@ -95,13 +97,13 @@ In your video:
 
 Complete any of these for bonus points:
 
-### A. AWS Stack with Terraform
+### A. Cloud Stack with Terraform
 
-Use the [ZenML Terraform Provider](https://registry.terraform.io/providers/zenml-io/zenml/latest/docs) and/or [AWS Stack Module](https://registry.terraform.io/modules/zenml-io/zenml-stack/aws/latest) to provision a complete ZenML stack:
+Use the [ZenML Terraform Provider](https://registry.terraform.io/providers/zenml-io/zenml/latest/docs) and/or the ZenML Stack Module for your cloud ([AWS](https://registry.terraform.io/modules/zenml-io/zenml-stack/aws/latest), [GCP](https://registry.terraform.io/modules/zenml-io/zenml-stack/gcp/latest), [Azure](https://registry.terraform.io/modules/zenml-io/zenml-stack/azure/latest)) to provision a complete ZenML stack:
 
-- S3 Artifact Store
-- ECR Container Registry
-- Kubernetes Orchestrator (if using EKS)
+- Cloud Artifact Store (S3, GCS, or Azure Blob)
+- Container Registry (ECR, GCR/Artifact Registry, or ACR)
+- Kubernetes Orchestrator (if using managed K8s)
 
 **Deliverable**: Run a sample pipeline that uses your provisioned stack.
 
@@ -117,22 +119,22 @@ Configure your deployment for high availability:
 
 Implement GitOps for the deployment:
 
-- Terraform state in S3 with locking
+- Remote Terraform state with locking
 - GitHub Actions for plan/apply
-- ArgoCD for Helm releases (if using EKS)
+- ArgoCD or Flux for Helm releases (if using K8s)
 
 ### D. Remote Terraform State
 
-Store Terraform state remotely with proper locking (S3 + DynamoDB).
+Store Terraform state remotely with proper locking (S3 + DynamoDB, GCS, or Azure Blob).
 
 ---
 
 ## Tech Stack
 
-- **Infrastructure**: Terraform, AWS (EKS/ECS/App Runner, RDS, VPC, ALB, IAM)
-- **Container Orchestration**: Kubernetes (Helm) or ECS/App Runner
+- **Infrastructure**: Terraform + your preferred cloud (AWS, GCP, or Azure)
+- **Container Orchestration**: Managed Kubernetes (EKS/GKE/AKS) with Helm, or alternative container platforms
 - **MLOps**: ZenML OSS
-- **Observability**: CloudWatch, Prometheus/Grafana, or equivalent
+- **Observability**: Cloud-native monitoring or Prometheus/Grafana
 
 ---
 
@@ -197,8 +199,8 @@ We value the detective work and clear thinking as much as the working solution.
 - [ZenML Self-Hosting Documentation](https://docs.zenml.io/getting-started/deploying-zenml)
 - [ZenML Helm Chart](https://artifacthub.io/packages/helm/zenml/zenml)
 - [ZenML Terraform Provider](https://registry.terraform.io/providers/zenml-io/zenml/latest/docs)
-- [ZenML AWS Stack Module](https://registry.terraform.io/modules/zenml-io/zenml-stack/aws/latest)
-- [EKS Best Practices](https://aws.github.io/aws-eks-best-practices/)
+- ZenML Stack Modules: [AWS](https://registry.terraform.io/modules/zenml-io/zenml-stack/aws/latest) | [GCP](https://registry.terraform.io/modules/zenml-io/zenml-stack/gcp/latest) | [Azure](https://registry.terraform.io/modules/zenml-io/zenml-stack/azure/latest)
+- Cloud Best Practices: [EKS](https://aws.github.io/aws-eks-best-practices/) | [GKE](https://cloud.google.com/kubernetes-engine/docs/best-practices) | [AKS](https://learn.microsoft.com/en-us/azure/aks/best-practices)
 
 ---
 
