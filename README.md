@@ -142,6 +142,8 @@ Store Terraform state remotely with proper locking (S3 + DynamoDB, GCS, or Azure
 
 Submit a private GitHub repo (fork this repo and push your changes to a new private one). Add collaborators: `htahir1`, `safoinme`, `Json-Andriopoulos`, and `stefannica`.
 
+**Important**: You do **not** need to keep your infrastructure running for evaluation. Your Terraform code and demo video are sufficient — feel free to tear down your resources after recording to avoid unnecessary cloud costs.
+
 Your repository should contain:
 
 1. **Terraform Code**: All infrastructure as code in `infrastructure/`, organized in modules
@@ -156,12 +158,12 @@ Your repository should contain:
 
 We are looking for:
 
-1. **Infrastructure Design**: Are the AWS services configured correctly and securely?
+1. **Infrastructure Design**: Are the cloud services configured correctly and securely?
 2. **Operational Readiness**: Could a platform team actually maintain this deployment?
 3. **Decision Documentation**: Did you explain *why* you made certain choices?
 4. **Security Awareness**: Are secrets handled properly? Is network access restricted appropriately?
 5. **Customer Empathy**: Is your documentation clear for a platform team that doesn't know ZenML?
-6. **"It Works"**: Can we `zenml login` to your server?
+6. **"It Works"**: Does your video demonstrate a successful `zenml login` and working server?
 
 **Bonus points for**:
 
