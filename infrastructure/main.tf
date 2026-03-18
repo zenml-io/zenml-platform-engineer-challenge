@@ -1,234 +1,93 @@
-# -----------------------------------------------------------------------------
-# ZENML PLATFORM ENGINEER CHALLENGE - INFRASTRUCTURE
-# -----------------------------------------------------------------------------
-#
-# Your goal: Deploy a production-ready ZenML OSS server on your preferred cloud.
-#
-# AWS is strongly preferred as it aligns with most customer deployments.
-# GCP or Azure are acceptable if you have significantly more experience there.
-#
-# Organize your Terraform code into modules as you see fit
-# (e.g., networking/, compute/, database/).
-#
-# -----------------------------------------------------------------------------
-# RECOMMENDED ARCHITECTURE (Managed K8s + Managed MySQL)
-# -----------------------------------------------------------------------------
-#
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │                         Virtual Network (VPC/VNet)                       │
-# │  ┌────────────────────────┐    ┌────────────────────────┐               │
-# │  │    Public Subnets      │    │    Private Subnets     │               │
-# │  │  ┌──────────────────┐  │    │  ┌──────────────────┐  │               │
-# │  │  │  Load Balancer   │──┼────┼─▶│   K8s Cluster    │  │               │
-# │  │  │  (ALB/GLB/AppGW) │  │    │  │ (EKS/GKE/AKS)   │  │               │
-# │  │  └──────────────────┘  │    │  │   ZenML Helm     │  │               │
-# │  └────────────────────────┘    │  └────────┬─────────┘  │               │
-# │                                │           │            │               │
-# │                                │  ┌────────▼─────────┐  │               │
-# │                                │  │  Managed MySQL   │  │               │
-# │                                │  │(RDS/CloudSQL/Az) │  │               │
-# │                                │  └──────────────────┘  │               │
-# │                                └────────────────────────┘               │
-# └─────────────────────────────────────────────────────────────────────────┘
-#
-# -----------------------------------------------------------------------------
-# ALTERNATIVE: K8s + IN-CLUSTER MySQL
-# -----------------------------------------------------------------------------
-#
-# You may deploy MySQL as a Kubernetes service instead of managed DB.
-# This demonstrates K8s stateful workload skills (PVCs, StatefulSets).
-#
-# NOTE: ZenML OSS only supports MySQL (not PostgreSQL).
-#
-# -----------------------------------------------------------------------------
-# RESOURCES
-# -----------------------------------------------------------------------------
-#
-# - ZenML Helm Chart: https://artifacthub.io/packages/helm/zenml/zenml
-# - ZenML Self-Hosting Docs: https://docs.zenml.io/getting-started/deploying-zenml
-# - Cloud Best Practices:
-#   - AWS EKS: https://aws.github.io/aws-eks-best-practices/
-#   - GCP GKE: https://cloud.google.com/kubernetes-engine/docs/best-practices
-#   - Azure AKS: https://learn.microsoft.com/en-us/azure/aks/best-practices
-#
-# -----------------------------------------------------------------------------
-
-terraform {
-  required_version = ">= 1.0"
-
-  required_providers {
-    # ===================
-    # AWS (strongly preferred)
-    # ===================
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-
-    # ===================
-    # GCP (alternative)
-    # ===================
-    # google = {
-    #   source  = "hashicorp/google"
-    #   version = "~> 6.0"
-    # }
-
-    # ===================
-    # Azure (alternative)
-    # ===================
-    # azurerm = {
-    #   source  = "hashicorp/azurerm"
-    #   version = "~> 4.0"
-    # }
-
-    # Uncomment if using Kubernetes with Helm
-    # kubernetes = {
-    #   source  = "hashicorp/kubernetes"
-    #   version = "~> 2.0"
-    # }
-    # helm = {
-    #   source  = "hashicorp/helm"
-    #   version = "~> 2.0"
-    # }
-
-    # For stretch goal: Cloud Stack provisioning
-    # zenml = {
-    #   source = "zenml-io/zenml"
-    # }
-  }
-
-  # Stretch Goal D: Remote state
-  #
-  # AWS:
-  # backend "s3" {
-  #   bucket         = "your-terraform-state-bucket"
-  #   key            = "zenml/terraform.tfstate"
-  #   region         = "us-east-1"
-  #   dynamodb_table = "terraform-locks"
-  #   encrypt        = true
-  # }
-  #
-  # GCP:
-  # backend "gcs" {
-  #   bucket = "your-terraform-state-bucket"
-  #   prefix = "zenml"
-  # }
-  #
-  # Azure:
-  # backend "azurerm" {
-  #   resource_group_name  = "terraform-state-rg"
-  #   storage_account_name = "yourstorageaccount"
-  #   container_name       = "tfstate"
-  #   key                  = "zenml.tfstate"
-  # }
+data "aws_availability_zones" "available" {
+  state = "available"
 }
 
-# =============================================================================
-# PROVIDER CONFIGURATION
-# =============================================================================
-# Uncomment and configure the provider for your chosen cloud.
-
-# -----------------------------------------------------------------------------
-# AWS Provider
-# -----------------------------------------------------------------------------
-provider "aws" {
-  region = var.region
-
-  default_tags {
-    tags = {
-      Project     = "zenml-platform-challenge"
-      Environment = var.environment
-      ManagedBy   = "terraform"
-    }
-  }
+locals {
+  name_prefix = "${var.project_name}-${var.environment}"
 }
 
-# -----------------------------------------------------------------------------
-# GCP Provider (alternative)
-# -----------------------------------------------------------------------------
-# provider "google" {
-#   project = var.gcp_project_id
-#   region  = var.region
-# }
+module "network" {
+  source = "./modules/network"
 
-# -----------------------------------------------------------------------------
-# Azure Provider (alternative)
-# -----------------------------------------------------------------------------
-# provider "azurerm" {
-#   features {}
-#   subscription_id = var.azure_subscription_id
-# }
-
-# =============================================================================
-# VARIABLES
-# =============================================================================
-
-variable "region" {
-  description = "Cloud region for all resources"
-  type        = string
-  default     = "us-east-1"  # Change for GCP/Azure (e.g., "us-central1", "eastus")
+  name_prefix          = local.name_prefix
+  vpc_cidr             = var.vpc_cidr
+  public_subnet_cidrs  = var.public_subnet_cidrs
+  private_subnet_cidrs = var.private_subnet_cidrs
+  azs                  = data.aws_availability_zones.available.names
 }
 
-variable "environment" {
-  description = "Environment name (e.g., dev, staging, prod)"
-  type        = string
-  default     = "dev"
+module "security" {
+  source = "./modules/security"
+
+  name_prefix = local.name_prefix
+  vpc_id      = module.network.vpc_id
+  app_port    = var.app_port
+  db_port     = var.db_port
 }
 
-variable "project_name" {
-  description = "Project name used for resource naming"
-  type        = string
-  default     = "zenml"
+module "rds" {
+  source = "./modules/rds"
+
+  name_prefix           = local.name_prefix
+  private_subnet_ids    = module.network.private_subnet_ids
+  rds_security_group_id = module.security.rds_security_group_id
+
+  db_name           = var.db_name
+  db_username       = var.db_username
+  db_port           = var.db_port
+  db_instance_class = var.db_instance_class
+  allocated_storage = var.db_allocated_storage
+  engine_version    = var.db_engine_version
 }
 
-# Uncomment for GCP
-# variable "gcp_project_id" {
-#   description = "GCP project ID"
-#   type        = string
-# }
+module "alb" {
+  source = "./modules/alb"
 
-# Uncomment for Azure
-# variable "azure_subscription_id" {
-#   description = "Azure subscription ID"
-#   type        = string
-# }
+  name_prefix           = local.name_prefix
+  vpc_id                = module.network.vpc_id
+  public_subnet_ids     = module.network.public_subnet_ids
+  alb_security_group_id = module.security.alb_security_group_id
+  app_port              = var.app_port
+  health_check_path     = var.health_check_path
+}
 
-# =============================================================================
-# TODO: YOUR INFRASTRUCTURE CODE GOES HERE
-# =============================================================================
-#
-# Suggested order:
-# 1. Virtual Network (VPC/VNet with subnets, security groups/firewall rules)
-# 2. MySQL Database — choose one:
-#    a) Managed MySQL (RDS, Cloud SQL, Azure Database for MySQL)
-#    b) MySQL as K8s StatefulSet with PVC (in-cluster)
-# 3. Kubernetes Cluster (EKS, GKE, AKS) or alternative container platform
-# 4. ZenML Deployment (Helm release or container service)
-# 5. Load Balancer with TLS
-# 6. Observability (CloudWatch, Cloud Monitoring, Azure Monitor)
-#
-# Tips:
-# - ZenML OSS only supports MySQL (not PostgreSQL)
-# - Use data sources to reference existing resources (e.g., TLS certificates)
-# - Use locals for computed values and naming conventions
-# - Consider using community modules:
-#   - AWS: terraform-aws-modules/vpc/aws, terraform-aws-modules/eks/aws
-#   - GCP: terraform-google-modules/network/google
-#   - Azure: Azure/network/azurerm
-# - For in-cluster MySQL: consider Bitnami Helm chart or a simple StatefulSet
-#
+resource "random_password" "zenml_admin" {
+  length           = 20
+  special          = false
+}
 
-# =============================================================================
-# OUTPUTS
-# =============================================================================
+resource "aws_secretsmanager_secret" "zenml_admin" {
+  name = "${local.name_prefix}-zenml-admins-password"
+}
 
-# output "zenml_server_url" {
-#   description = "URL to access the ZenML server"
-#   value       = "https://your-zenml-domain"
-# }
+resource "aws_secretsmanager_secret_version" "zenml_admin" {
+  secret_id = aws_secretsmanager_secret.zenml_admin.id
+  secret_string = jsonencode({
+    password = random_password.zenml_admin.result
+  })
+}
+module "ecs" {
+  source = "./modules/ecs"
 
-# output "database_endpoint" {
-#   description = "Database endpoint (managed or K8s service)"
-#   value       = "your-database-endpoint"
-#   sensitive   = true
-# }
+  name_prefix           = local.name_prefix
+  aws_region            = var.aws_region
+  private_subnet_ids    = module.network.private_subnet_ids
+  ecs_security_group_id = module.security.ecs_security_group_id
+  target_group_arn      = module.alb.target_group_arn
+
+  app_port         = var.app_port
+  container_image  = var.container_image
+  container_cpu    = var.container_cpu
+  container_memory = var.container_memory
+  desired_count    = var.desired_count
+
+  db_host       = module.rds.db_instance_endpoint
+  db_port       = module.rds.db_instance_port
+  db_name       = module.rds.db_name
+  db_username   = module.rds.db_username
+  db_secret_arn = module.rds.db_secret_arn
+
+  zenml_auto_activate    = var.zenml_auto_activate
+  zenml_admin_username   = var.zenml_admin_username
+  zenml_admin_secret_arn = aws_secretsmanager_secret.zenml_admin.arn
+}
