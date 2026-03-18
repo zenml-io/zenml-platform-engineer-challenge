@@ -85,7 +85,7 @@ variable "health_check_path" {
 variable "container_image" {
   description = "Container image to deploy"
   type        = string
-  default     = "nginx:stable"
+  default     = "zenmldocker/zenml-server:latest"
 }
 
 variable "container_cpu" {
@@ -104,4 +104,16 @@ variable "desired_count" {
   description = "Desired task count"
   type        = number
   default     = 1
+}
+
+variable "zenml_admin_username" {
+  description = "Initial ZenML admin username"
+  type        = string
+  default     = "admin"
+}
+
+variable "zenml_auto_activate" {
+  description = "Whether to auto-activate ZenML on first boot"
+  type        = bool
+  default     = true
 }

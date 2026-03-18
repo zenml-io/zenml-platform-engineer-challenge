@@ -37,6 +37,27 @@ resource "aws_iam_role_policy_attachment" "task_execution_default" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+resource "aws_iam_role_policy" "task_execution_secrets" {
+  name = "${var.name_prefix}-ecs-task-execution-secrets"
+  role = aws_iam_role.task_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = [
+          var.db_secret_arn,
+          var.zenml_admin_secret_arn
+        ]
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role" "task" {
   name = "${var.name_prefix}-ecs-task-role"
 
@@ -63,7 +84,7 @@ resource "aws_ecs_task_definition" "this" {
   execution_role_arn       = aws_iam_role.task_execution.arn
   task_role_arn            = aws_iam_role.task.arn
 
-  container_definitions = jsonencode([
+    container_definitions = jsonencode([
     {
       name      = "app"
       image     = var.container_image
@@ -77,7 +98,27 @@ resource "aws_ecs_task_definition" "this" {
         }
       ]
 
-      command = var.container_image == "nginx:stable" ? ["sh", "-c", "sed -i 's/listen       80;/listen 8080;/g' /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"] : null
+      environment = [
+        {
+          name  = "ZENML_SERVER_AUTO_ACTIVATE"
+          value = var.zenml_auto_activate ? "1" : "0"
+        },
+        {
+          name  = "ZENML_DEFAULT_USER_NAME"
+          value = var.zenml_admin_username
+        }
+      ]
+
+      secrets = [
+        {
+          name      = "ZENML_DEFAULT_USER_PASSWORD"
+          valueFrom = "${var.zenml_admin_secret_arn}:password::"
+        },
+        {
+          name      = "ZENML_STORE_URL"
+          valueFrom = "${var.db_secret_arn}:store_url::"
+        }
+      ]
 
       logConfiguration = {
         logDriver = "awslogs"
@@ -87,8 +128,21 @@ resource "aws_ecs_task_definition" "this" {
           awslogs-stream-prefix = "ecs"
         }
       }
+
+      healthCheck = {
+        command     = ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/').read()\" || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 60
+      }
     }
   ])
+
+  runtime_platform {
+    cpu_architecture        = "X86_64"
+    operating_system_family = "LINUX"
+  }
 }
 
 resource "aws_ecs_service" "this" {
@@ -111,7 +165,8 @@ resource "aws_ecs_service" "this" {
   }
 
   depends_on = [
-    aws_iam_role_policy_attachment.task_execution_default
+    aws_iam_role_policy_attachment.task_execution_default,
+    aws_iam_role_policy.task_execution_secrets
   ]
 
   tags = {

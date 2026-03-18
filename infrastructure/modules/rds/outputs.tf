@@ -22,3 +22,8 @@ output "db_secret_arn" {
   description = "Secrets Manager ARN for DB credentials"
   value       = aws_secretsmanager_secret.db.arn
 }
+
+output "db_secret_name" {
+  description = "Secrets Manager name for DB credentials"
+  value       = aws_secretsmanager_secret.db.name
+}

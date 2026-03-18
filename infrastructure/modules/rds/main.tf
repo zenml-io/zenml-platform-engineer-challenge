@@ -1,7 +1,6 @@
 resource "random_password" "db" {
   length           = 20
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
+  special          = false
 }
 
 resource "aws_db_subnet_group" "this" {
@@ -14,22 +13,23 @@ resource "aws_db_subnet_group" "this" {
 }
 
 resource "aws_secretsmanager_secret" "db" {
-  name = "${var.name_prefix}-db-credentials"
+  name = "${var.name_prefix}-db-credential"
 
   tags = {
-    Name = "${var.name_prefix}-db-credentials"
+    Name = "${var.name_prefix}-db-credential"
   }
 }
 
 resource "aws_secretsmanager_secret_version" "db" {
   secret_id = aws_secretsmanager_secret.db.id
   secret_string = jsonencode({
-    username = var.db_username
-    password = random_password.db.result
-    engine   = "mysql"
-    host     = aws_db_instance.this.address
-    port     = var.db_port
-    dbname   = var.db_name
+    username  = var.db_username
+    password  = random_password.db.result
+    engine    = "mysql"
+    host      = aws_db_instance.this.address
+    port      = var.db_port
+    dbname    = var.db_name
+    store_url = "mysql://${var.db_username}:${random_password.db.result}@${aws_db_instance.this.address}:${var.db_port}/${var.db_name}"
   })
 }
 

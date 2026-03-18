@@ -50,6 +50,22 @@ module "alb" {
   app_port              = var.app_port
   health_check_path     = var.health_check_path
 }
+
+resource "random_password" "zenml_admin" {
+  length           = 20
+  special          = false
+}
+
+resource "aws_secretsmanager_secret" "zenml_admin" {
+  name = "${local.name_prefix}-zenml-admins-password"
+}
+
+resource "aws_secretsmanager_secret_version" "zenml_admin" {
+  secret_id = aws_secretsmanager_secret.zenml_admin.id
+  secret_string = jsonencode({
+    password = random_password.zenml_admin.result
+  })
+}
 module "ecs" {
   source = "./modules/ecs"
 
@@ -64,4 +80,14 @@ module "ecs" {
   container_cpu    = var.container_cpu
   container_memory = var.container_memory
   desired_count    = var.desired_count
+
+  db_host       = module.rds.db_instance_endpoint
+  db_port       = module.rds.db_instance_port
+  db_name       = module.rds.db_name
+  db_username   = module.rds.db_username
+  db_secret_arn = module.rds.db_secret_arn
+
+  zenml_auto_activate    = var.zenml_auto_activate
+  zenml_admin_username   = var.zenml_admin_username
+  zenml_admin_secret_arn = aws_secretsmanager_secret.zenml_admin.arn
 }
